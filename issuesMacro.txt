@@ -1,0 +1,70 @@
+Enum READYSTATE
+READYSTATE_UNINITIALIZED = 0
+READYSTATE_LOADING = 1
+READYSTATE_LOADED = 2
+READYSTATE_INTERACTIVE = 3
+READYSTATE_COMPLETE = 4
+End Enum
+'to refer to the running copy of Internet Explorer
+Dim IE As InternetExplorer
+'to refer to the HTML document returned
+Dim html As HTMLDocument
+'open Internet Explorer in memory, and go to website
+Sub export()
+cellCount = Workbooks("S&P 500").Worksheets("List").UsedRange.Rows.Count
+For cellNo = 1 To cellCount
+orgId = Workbooks("S&P 500").Worksheets("List").Cells(cellNo, 2).Value
+orgName = Workbooks("S&P 500").Worksheets("List").Cells(cellNo, 1).Value
+    openPage ("http://www.opensecrets.org/lobby/clientsum.php?id=" & Trim(orgId))
+    Dim years As String
+    Dim year As Variant
+    Dim table As IHTMLElement
+    Dim txt As String
+    Dim tableData As IHTMLElementCollection
+    years = Trim(html.getElementsByName("GoToPage")(0).innerText)
+	IE.Quit
+    year = Split(years, """)")
+    Dim tableValue As String
+    txt = year(0)
+    For Each i In year
+    If i <> "" Then
+    IE.Quit
+    openPage ("http://www.opensecrets.org/lobby/clientissues.php?id=" & Trim(orgId) & "&year=" & Trim(i))
+   rowNumber = Workbooks("Lobbying Detail - Final.xlsx").Worksheets("Issues").UsedRange.Rows(Workbooks("Lobbying Detail - Final.xlsx").Worksheets("Issues").UsedRange.Rows.Count).Row
+    For Each tbl In html.getElementsByTagName("table")
+    If tbl.ID = "client_issues" Then
+    For Each body In tbl.getElementsByTagName("tbody")
+   For Each Row In body.Rows
+       rowNumber = rowNumber + 1
+       columnNo = 0
+       Workbooks("Lobbying Detail - Final.xlsx").Worksheets("Issues").Cells(rowNumber, 1).Value = orgName
+       Workbooks("Lobbying Detail - Final.xlsx").Worksheets("Issues").Cells(rowNumber, 2).Value = Trim(i)
+       columnNo = 2
+       For Each cell In Row.Cells
+       columnNo = columnNo + 1
+       Workbooks("Lobbying Detail - Final.xlsx").Worksheets("Issues").Cells(rowNumber, columnNo).Value = cell.innerText
+       Next
+       Next
+   Next
+   End If
+   Next
+   IE.Quit
+End If
+    Next i
+    Next
+End Sub
+
+Sub openPage(url As String)
+Set IE = New InternetExplorer
+    IE.Visible = True
+    IE.navigate url
+    'Wait until IE is done loading page
+    Do While IE.READYSTATE <> READYSTATE_COMPLETE
+    Application.StatusBar = "Trying to go to OpenSecrets ..."
+    DoEvents
+    Loop
+    'show text of HTML document returned
+    Set html = Nothing
+    Set html = IE.document
+    Application.StatusBar = ""
+End Sub

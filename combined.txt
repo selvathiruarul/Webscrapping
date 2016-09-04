@@ -1,0 +1,139 @@
+Enum READYSTATE
+READYSTATE_UNINITIALIZED = 0
+READYSTATE_LOADING = 1
+READYSTATE_LOADED = 2
+READYSTATE_INTERACTIVE = 3
+READYSTATE_COMPLETE = 4
+End Enum
+'to refer to the running copy of Internet Explorer
+Dim IE As InternetExplorer
+'to refer to the HTML document returned
+Dim html As HTMLDocument
+'open Internet Explorer in memory, and go to website
+    Sub export()
+        cellCount = Workbooks("S&P 500").Worksheets("List").UsedRange.Rows.Count
+        For cellNo = 1 To cellCount
+            orgId = Workbooks("S&P 500").Worksheets("List").Cells(cellNo, 2).Value
+            orgName = Workbooks("S&P 500").Worksheets("List").Cells(cellNo, 1).Value
+            Call recipients(orgId, orgName)
+            Call congr(orgId, orgName)
+        Next
+    End Sub
+    Sub recipients(ByVal orgId As String, ByVal orgName As String)
+		openPage ("http://www.opensecrets.org/orgs/recips.php?id=" & Trim(orgId))
+        Dim years As String
+        Dim year(20)
+        Dim table As IHTMLElement
+        Dim txt As String
+        Dim tableData As IHTMLElementCollection
+        firstIndex = 1
+        a = 0
+        years = Trim(html.getElementsByName("dropdown")(1).innerText)
+        IE.Quit
+        'Shell "wscript.exe ""E:\GTA\Dr.Brown\closeDialog.vbs"""
+        Set IE = Nothing
+        yearsLength = Len(years)
+        Do While firstIndex < yearsLength
+            yearValue = Mid(years, firstIndex, 4)
+            year(a) = yearValue
+            a = a + 1
+            firstIndex = firstIndex + 4
+        Loop
+        Dim tableValue As String
+        txt = year(0)
+        For Each i In year
+            If i <> "" Then
+                'IE.Quit
+                openPage ("http://www.opensecrets.org/orgs/recips.php?id=" & Trim(orgId) & "&type=P&state=&sort=A&cycle=" & Trim(i))
+                rowNumber = Workbooks("out.xlsx").Worksheets("Recepients").UsedRange.Rows(Workbooks("out.xlsx").Worksheets("Recepients").UsedRange.Rows.Count).Row
+                For Each tbl In html.getElementsByTagName("table")
+                    If tbl.ID = "recips" Then
+                            For Each body In tbl.getElementsByTagName("tbody")
+                                For Each Row In body.Rows
+                                    rowNumber = rowNumber + 1
+                                    columnNo = 0
+                                    Workbooks("out.xlsx").Worksheets("Recepients").Cells(rowNumber, 1).Value = orgName
+                                    Workbooks("out.xlsx").Worksheets("Recepients").Cells(rowNumber, 2).Value = Trim(i)
+                                    columnNo = 2
+                                    For Each cell In Row.Cells
+                                        columnNo = columnNo + 1
+                                        Workbooks("out.xlsx").Worksheets("Recepients").Cells(rowNumber, columnNo).Value = cell.innerText
+                                    Next
+                                Next
+                            Next
+                        End If
+                    Next
+                    IE.Quit
+                    Shell "wscript.exe ""E:\GTA\Dr.Brown\closeDialog.vbs"""
+                    Set IE = Nothing
+                End If
+            Next i
+    End Sub
+
+    Sub congr(ByVal orgId As String, ByVal orgName As String)
+        openPage ("http://www.opensecrets.org/orgs/congcmtes.php?id=" & Trim(orgId))
+        Dim years As String
+        Dim year(20)
+        Dim table As IHTMLElement
+        Dim txt As String
+        Dim tableData As IHTMLElementCollection
+        firstIndex = 1
+        a = 0
+        years = Trim(html.getElementsByName("dropdown")(1).innerText)
+        IE.Quit
+        Set IE = Nothing
+        Shell "wscript.exe ""E:\GTA\Dr.Brown\closeDialog.vbs"""
+        yearsLength = Len(years)
+        Do While firstIndex < yearsLength
+            yearValue = Mid(years, firstIndex, 4)
+            year(a) = yearValue
+            a = a + 1
+            firstIndex = firstIndex + 4
+        Loop
+        Dim tableValue As String
+        txt = year(0)
+        For Each i In year
+            If i <> "" Then
+                'IE.Quit
+                openPage ("http://www.opensecrets.org/orgs/congcmtes.php?id=" & Trim(orgId) & "&cycle=" & Trim(i))
+                headerIndex = 0
+                For Each tbl In html.getElementsByTagName("table")
+                    headerName = html.getElementsByTagName("h2")(headerIndex).innerText
+                    headerIndex = headerIndex + 1
+                    rowNumber = Workbooks("out.xlsx").Worksheets(headerName).UsedRange.Rows(Workbooks("out.xlsx").Worksheets(headerName).UsedRange.Rows.Count).Row
+                    'rowNumber = Workbooks("out.xlsx").Worksheets(headerName).UsedRange.Rows.Count
+                    For Each body In tbl.getElementsByTagName("tbody")
+                        For Each Row In body.Rows
+                            rowNumber = rowNumber + 1
+                            columnNo = 0
+                            Workbooks("out.xlsx").Worksheets(headerName).Cells(rowNumber, 1).Value = orgName
+                            Workbooks("out.xlsx").Worksheets(headerName).Cells(rowNumber, 2).Value = Trim(i)
+                            columnNo = 2
+                            For Each cell In Row.Cells
+                                columnNo = columnNo + 1
+                                Workbooks("out.xlsx").Worksheets(headerName).Cells(rowNumber, columnNo).Value = cell.innerText
+                            Next
+                        Next
+                    Next
+                Next
+            IE.Quit
+            Shell "wscript.exe ""E:\GTA\Dr.Brown\closeDialog.vbs"""
+            Set IE = Nothing
+            End If
+        Next i
+    End Sub
+
+Sub openPage(url As String)
+    Set IE = New InternetExplorer
+    IE.Visible = True
+    IE.navigate url
+    'Wait until IE is done loading page
+    Do While IE.READYSTATE <> READYSTATE_COMPLETE
+        Application.StatusBar = "Trying to go to OpenSecrets ..."
+        DoEvents
+    Loop
+    'show text of HTML document returned
+    Set html = Nothing
+    Set html = IE.document
+    Application.StatusBar = ""
+End Sub
